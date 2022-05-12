@@ -30,7 +30,7 @@ const registerUser = asyncHandler(async(req, res) => {
     const newUser = await User.create({
         name,
         email,
-        password: hashedPassword
+        password: hashedPassword,
     })
 
     if(newUser) {
@@ -38,7 +38,7 @@ const registerUser = asyncHandler(async(req, res) => {
             _id: newUser.id,
             name: newUser.name,
             email: newUser.email,
-            password: newUser.password
+            token: generateToken(newUser.id)
         })
     } else
     res.status(400)
@@ -48,12 +48,37 @@ const registerUser = asyncHandler(async(req, res) => {
 })
 
 const loginUser = asyncHandler(async(req, res) => {
-    res.json({message: 'Login'})
+    const {email, password} = req.body
+    if(!email || !password) {
+        res.status(400)
+        throw new Error('Please add your credentials')
+    }
+    // Finding a user from the database in order to compare him to the user that has been passed into the fields and checking if those match
+    const user = await User.findOne({email})
+    if(user && (await bcrypt.compare(password, user.password))) {
+        res.status(200).json({
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+           token: generateToken(user.id)
+
+        })
+    } else {
+        res.status(400)
+        throw new Error('Invalid credentials')
+    }
+
 })
 
 const getMe = asyncHandler(async(req, res) => {
     res.json({message: 'Get info'})
 })
+
+// Generating json web token
+const generateToken = (id) => {
+return jwt.sign({id}, process.env.JWT_SECRET, {expiresIn: '30d'})
+}
+
 
 module.exports = {
     registerUser,
